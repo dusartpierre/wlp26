@@ -1,0 +1,59 @@
+rules_version = '2';
+// Règles de sécurité du carnet WLP 26.
+// À coller dans Console Firebase > Firestore Database > Règles, puis "Publier".
+// ▶ Changez CODE_CLUB ci-dessous : c'est le code que les 5 membres saisiront.
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    function codeClub() { return 'CODE_CLUB'; }
+
+    function isMember() {
+      return request.auth != null
+        && exists(/databases/$(db)/documents/members/$(request.auth.uid));
+    }
+    function myName() {
+      return get(/databases/$(db)/documents/members/$(request.auth.uid)).data.name;
+    }
+    function smallString(v, n) { return v is string && v.size() <= n; }
+
+    // Connexion : un téléphone devient membre s'il fournit le bon code.
+    match /members/{uid} {
+      allow read: if isMember();
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.code == codeClub()
+        && smallString(request.resource.data.name, 40);
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Fiches de dégustation : tout le club lit, chacun modifie les siennes.
+    match /drams/{id} {
+      allow read: if isMember();
+      allow create: if isMember() && request.resource.data.author == myName()
+        && smallString(request.resource.data.bottle, 200);
+      allow update: if isMember() && resource.data.author == myName()
+        && request.resource.data.author == myName();
+      allow delete: if isMember() && resource.data.author == myName();
+    }
+
+    // Souvenirs (journal photo/texte)
+    match /moments/{id} {
+      allow read: if isMember();
+      allow create: if isMember() && request.resource.data.author == myName();
+      allow update, delete: if isMember() && resource.data.author == myName();
+    }
+
+    // Photos pleine qualité (1 doc par dram/souvenir, chargées à la demande)
+    match /photos/{id} {
+      allow read: if isMember();
+      allow create: if isMember() && request.resource.data.author == myName()
+        && request.resource.data.data is string && request.resource.data.data.size() < 1000000;
+      allow update, delete: if isMember() && resource.data.author == myName();
+    }
+
+    // Listes "stands à visiter" : une par membre (id = prénom)
+    match /wishlists/{name} {
+      allow read: if isMember();
+      allow write: if isMember() && name == myName();
+    }
+  }
+}
