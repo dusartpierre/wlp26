@@ -1,6 +1,6 @@
 # WLP 26 · Carnet de dégustation du club
 
-Application mobile (PWA) pour le Whisky Live Paris 2026 : les 216 stands du plan, les fiches de dégustation notées sur 100, les photos, le classement du club et un journal de souvenirs, partagés en temps réel entre les 5 membres.
+Application mobile (PWA) pour le Whisky Live Paris 2026 : les 216 stands du plan, les fiches de dégustation notées sur 100, les photos, le classement du club et un journal de souvenirs, partagés en temps réel entre les membres du club.
 
 - **Hébergement** : GitHub Pages (gratuit)
 - **Données** : Firebase Firestore, offre gratuite Spark (pas de carte bancaire)
@@ -31,7 +31,7 @@ Application mobile (PWA) pour le Whisky Live Paris 2026 : les 216 stands du plan
 5. Allez dans **⚙️ Paramètres du projet > Vos applications > icône Web `</>`**. Donnez un nom à l'app, puis copiez l'objet `firebaseConfig`.
 
 ### 2. Configuration
-Ouvrez `js/config.js` :
+Ouvrez `config.js` :
 - collez votre `firebaseConfig` ;
 - remplacez les prénoms dans `MEMBERS`.
 
@@ -56,8 +56,8 @@ python3 -m http.server 8000   # puis http://localhost:8000
 ```
 
 ## Personnaliser
-- **Exposants** : `js/stands.js`. La liste a été transcrite depuis l'image du plan, qui est en basse résolution, donc quelques numéros sont à vérifier sur le plan papier du salon. Certains numéros sont partagés par plusieurs marques (ex. 126 : Bankhall / Aber Falls / Crabbie ; 130 : Benromach / Gordon & MacPhail). Évitez de renommer un stand déjà noté, car l'identifiant dérive du numéro et du nom.
-- **Plan** : remplacez `img/plan-wlp26.webp` par une version haute définition si vous en trouvez une (même nom de fichier).
+- **Exposants** : `stands.js`. La liste a été transcrite depuis l'image du plan, qui est en basse résolution, donc quelques numéros sont à vérifier sur le plan papier du salon. Certains numéros sont partagés par plusieurs marques (ex. 126 : Bankhall / Aber Falls / Crabbie ; 130 : Benromach / Gordon & MacPhail). Évitez de renommer un stand déjà noté, car l'identifiant dérive du numéro et du nom.
+- **Plan** : remplacez `plan-wlp26.webp` par une version haute définition si vous en trouvez une (même nom de fichier).
 - **Mise à jour du code** : après une modification, incrémentez `VERSION` dans `sw.js` pour que les téléphones rechargent la nouvelle version.
 
 ## Données & quotas
@@ -66,14 +66,10 @@ python3 -m http.server 8000   # puis http://localhost:8000
 - Collections : `members`, `drams`, `moments`, `photos`, `wishlists`. Chaque membre ne peut modifier ou supprimer que ses propres fiches.
 
 ## Structure
+Tous les fichiers sont à plat, à la racine du dépôt (aucun dossier).
 ```
-index.html            coquille de l'app
-css/style.css
-js/config.js          ← à remplir (Firebase + prénoms)
-js/stands.js          exposants par zone
-js/store.js           Firestore / mode démo (cache hors ligne)
-js/app.js             interface
-sw.js                 cache hors ligne (PWA)
-firestore.rules       ← à coller dans Firebase (avec votre code club)
-img/                  plan + icônes
+index.html  style.css  app.js  store.js  stands.js
+config.js         ← Firebase + prénoms
+sw.js  manifest.webmanifest  icon-192.png  icon-512.png  plan-wlp26.webp
+firestore.rules   ← à coller dans Firebase (avec votre code club)
 ```
