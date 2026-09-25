@@ -23,6 +23,13 @@ const bottleKey = d => (d.standId || '') + '|' + norm(d.bottle);
 const standOf = d => STAND_BY_ID[d.standId] || (d.standName ? { id: '', num: '?', name: d.standName, color: '#888', zoneName: '' } : { id: '', num: '—', name: 'Hors stand', color: '#888', zoneName: '' });
 const numBadge = (s, mini) => `<span class="num" style="background:${s.color}${mini ? ';display:inline-grid;min-width:30px;height:20px;font-size:11px;vertical-align:1px' : ''}">${esc(s.num)}</span>`;
 const myWish = () => new Set(S.wish[S.me?.name]?.stands || []);
+// Stands visités : cochés à la main OU au moins un dram noté
+const visitedOf = name => new Set([...(S.wish[name]?.visited || []), ...S.drams.filter(d => d.author === name && d.standId).map(d => d.standId)]);
+const tastedOf = name => new Set(S.drams.filter(d => d.author === name && d.standId).map(d => d.standId));
+// Double bouton photo : appareil photo direct + galerie
+const photoButtons = (idp) => `<div class="grid2" style="margin-top:8px">
+  <label class="btn"><input type="file" accept="image/*" capture="environment" class="${idp}" hidden>📷 Prendre une photo</label>
+  <label class="btn"><input type="file" accept="image/*" class="${idp}" hidden>🖼️ Galerie</label></div>`;
 
 function toast(msg, ms = 2400) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t);
@@ -73,8 +80,9 @@ function loginView() {
   $('nav.bottom').classList.add('hidden'); $('header.top').classList.add('hidden');
   let who = '';
   app.innerHTML = `<div class="login">
-    <div class="big">WLP <b>26</b></div>
-    <p class="muted">Carnet de dégustation du club · ${esc(EVENT.name)}</p>
+    <img src="logo-wk.png" alt="Whisky Knights" class="wk-logo">
+    <div class="big" style="font-size:40px;text-align:center">WLP <b>26</b></div>
+    <p class="muted" style="text-align:center;margin-top:4px">Carnet de dégustation · ${esc(EVENT.name)}</p>
     <label class="f">Qui êtes-vous ?</label>
     <div class="who">${MEMBERS.map(m => `<button data-m="${esc(m)}">${avatar(m)}${esc(m)}</button>`).join('')}</div>
     <label class="f" for="code">Code club</label>
@@ -157,18 +165,29 @@ function vStands() {
   const f = S.filters, wish = myWish();
   const byStand = {};
   S.drams.forEach(d => (byStand[d.standId] ||= []).push(d));
-  const visitedByMe = new Set(S.drams.filter(d => d.author === S.me.name).map(d => d.standId));
+  const visitedByMe = visitedOf(S.me.name);
+  const clubVisited = new Set(MEMBERS.flatMap(m => [...visitedOf(m)]));
   const wishers = {};
   Object.entries(S.wish).forEach(([n, w]) => (w.stands || []).forEach(id => (wishers[id] ||= []).push(n)));
   const qn = norm(f.q);
   const list = STANDS.filter(s =>
     (!f.zone || s.zone === f.zone) &&
     (!qn || norm(s.name + ' ' + s.num + ' ' + s.zoneName + ' ' + s.sub).includes(qn) || (byStand[s.id] || []).some(d => norm(d.bottle).includes(qn))) &&
-    (f.mode === 'all' || (f.mode === 'wish' && wish.has(s.id)) || (f.mode === 'club' && byStand[s.id]) || (f.mode === 'todo' && !visitedByMe.has(s.id)))
+    (f.mode === 'all' || (f.mode === 'wish' && wish.has(s.id)) || (f.mode === 'club' && byStand[s.id]) || (f.mode === 'done' && visitedByMe.has(s.id)) || (f.mode === 'todo' && !visitedByMe.has(s.id)))
   );
-  let html = `<input class="search" id="q" type="search" placeholder="🔎 Stand, numéro, bouteille…" value="${esc(f.q)}">
+  const pct = n => Math.round(n / STANDS.length * 100);
+  const zoneStats = ZONES.map(z => { const ids = STANDS.filter(s => s.zone === z.id).map(s => s.id); return { z, total: ids.length, me: ids.filter(i => visitedByMe.has(i)).length, club: ids.filter(i => clubVisited.has(i)).length }; });
+  let html = `<details class="card prog" ${f.progOpen ? 'open' : ''} id="prog">
+      <summary><div class="row"><div class="grow"><b>Ma progression</b> <span class="muted small">· ${visitedByMe.size} / ${STANDS.length} stands</span></div><span class="pill ok">✓ ${pct(visitedByMe.size)} %</span></div>
+        <div class="bar2"><i class="club" style="width:${pct(clubVisited.size)}%"></i><i style="width:${pct(visitedByMe.size)}%"></i></div>
+        <div class="small muted" style="margin-top:4px"><span class="lg me"></span>moi <span class="lg club"></span>club (${clubVisited.size}) · touchez pour le détail par zone</div></summary>
+      <div class="ztiles">${zoneStats.map(t => `<button class="ztile ${t.me === t.total ? 'full' : ''}" data-zone="${t.z.id}" style="--c:${t.z.color}">
+        <span class="zn">${esc(t.z.name.split(' (')[0].split(' / ')[0])}</span><span class="zc">${t.me}/${t.total}${t.me === t.total ? ' 🏅' : ''}</span>
+        <span class="bar2 thin"><i class="club" style="width:${t.club / t.total * 100}%"></i><i style="width:${t.me / t.total * 100}%"></i></span></button>`).join('')}</div>
+    </details>
+    <input class="search" id="q" type="search" placeholder="🔎 Stand, numéro, bouteille…" value="${esc(f.q)}">
     <div class="chips">
-      ${[['all', 'Tous'], ['wish', `⭐ Ma liste (${wish.size})`], ['club', '🥃 Dégustés par le club'], ['todo', 'Pas encore visités']].map(([k, l]) => `<button class="chip ${f.mode === k ? 'on' : ''}" data-mode="${k}">${l}</button>`).join('')}
+      ${[['all', 'Tous'], ['done', `✓ Mes visités (${visitedByMe.size})`], ['todo', 'À découvrir'], ['wish', `⭐ Ma liste (${wish.size})`], ['club', '🥃 Dégustés par le club']].map(([k, l]) => `<button class="chip ${f.mode === k ? 'on' : ''}" data-mode="${k}">${l}</button>`).join('')}
     </div>
     <div class="chips" style="padding-top:2px">
       <button class="chip ${!f.zone ? 'on' : ''}" data-zone="">Toutes zones</button>
@@ -177,18 +196,19 @@ function vStands() {
   if (!list.length) html += `<div class="empty"><div class="e">🤷</div>Aucun stand ne correspond.</div>`;
   let lastZone = '', lastSub = '';
   for (const s of list) {
-    if (s.zone !== lastZone) { html += `<div class="zone-h"><i style="background:${s.color}"></i>${esc(s.zoneName)}</div>`; lastZone = s.zone; lastSub = ''; }
+    if (s.zone !== lastZone) { const zs = zoneStats.find(t => t.z.id === s.zone); html += `<div class="zone-h"><i style="background:${s.color}"></i><span class="grow">${esc(s.zoneName)}</span><span class="zcount">✓ ${zs.me}/${zs.total}</span></div>`; lastZone = s.zone; lastSub = ''; }
     if (s.sub && s.sub !== lastSub) { html += `<div class="small muted" style="margin:8px 0 0 4px">${esc(s.sub)}</div>`; lastSub = s.sub; }
     const ds = byStand[s.id] || [];
     const tasters = [...new Set(ds.map(d => d.author))];
     const a = avg(ds.map(d => d.score).filter(x => x != null));
     html += `<div class="stand ${visitedByMe.has(s.id) ? 'visited' : ''}" data-id="${s.id}">
       ${numBadge(s)}
-      <div class="grow"><div class="name">${esc(s.name)}</div>${ds.length ? `<div class="sub">${ds.length} dram${ds.length > 1 ? 's' : ''} noté${ds.length > 1 ? 's' : ''}</div>` : ''}</div>
+      <div class="grow"><div class="name">${esc(s.name)}</div>${visitedByMe.has(s.id) && !ds.some(d => d.author === S.me.name) ? '<div class="sub">visité</div>' : ''}${ds.length ? `<div class="sub">${ds.length} dram${ds.length > 1 ? 's' : ''} noté${ds.length > 1 ? 's' : ''}</div>` : ''}</div>
       ${(wishers[s.id] || []).length ? `<div class="dots">${wishers[s.id].filter(n => n !== S.me.name).map(n => avatar(n)).join('')}</div>` : ''}
       ${tasters.length ? `<div class="dots" title="Dégusté par">${tasters.map(n => avatar(n)).join('')}</div>` : ''}
       ${a != null ? scoreTag(Math.round(a)) : ''}
       <button class="star ${wish.has(s.id) ? 'on' : ''}" data-star="${s.id}" aria-label="À voir">★</button>
+      <button class="vcheck ${visitedByMe.has(s.id) ? 'on' : ''}" data-visit="${s.id}" aria-label="Visité">✓</button>
     </div>`;
   }
   app.innerHTML = html;
@@ -197,6 +217,9 @@ function vStands() {
   app.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { f.mode = b.dataset.mode; vStands(); });
   app.querySelectorAll('[data-zone]').forEach(b => b.onclick = () => { f.zone = b.dataset.zone; vStands(); });
   app.querySelectorAll('[data-star]').forEach(b => b.onclick = e => { e.stopPropagation(); toggleWish(b.dataset.star); });
+  app.querySelectorAll('[data-visit]').forEach(b => b.onclick = e => { e.stopPropagation(); toggleVisited(b.dataset.visit); });
+  $('#prog').ontoggle = e => { f.progOpen = e.target.open; };
+  app.querySelectorAll('.ztile').forEach(b => b.onclick = e => { e.preventDefault(); f.zone = f.zone === b.dataset.zone ? '' : b.dataset.zone; vStands(); });
   app.querySelectorAll('.stand').forEach(el => el.onclick = () => location.hash = 'stand/' + el.dataset.id);
 }
 
@@ -204,6 +227,14 @@ function toggleWish(id) {
   const w = myWish(); w.has(id) ? w.delete(id) : w.add(id);
   S.wish[S.me.name] = { ...(S.wish[S.me.name] || {}), stands: [...w] };
   store.save('wishlists', S.me.name, { stands: [...w], at: Date.now() });
+  rerender();
+}
+
+function toggleVisited(id) {
+  if (tastedOf(S.me.name).has(id)) { toast('Déjà visité : vous y avez noté un dram'); return; }
+  const v = new Set(S.wish[S.me.name]?.visited || []); v.has(id) ? v.delete(id) : v.add(id);
+  S.wish[S.me.name] = { ...(S.wish[S.me.name] || {}), visited: [...v] };
+  store.save('wishlists', S.me.name, { visited: [...v], at: Date.now() });
   rerender();
 }
 
@@ -218,10 +249,12 @@ function vStand(id) {
   app.innerHTML = `
     <a href="#stands" class="small">‹ Stands</a>
     <div class="row" style="margin:10px 0">${numBadge(s)}<div class="grow"><h1 style="margin:0">${esc(s.name)}</h1><div class="small muted">${esc(s.zoneName)}${s.sub ? ' · ' + esc(s.sub) : ''}</div></div></div>
-    <div class="grid2">
-      <a class="btn primary" href="#new?stand=${encodeURIComponent(id)}">🥃 Noter un dram ici</a>
+    <a class="btn primary block" href="#new?stand=${encodeURIComponent(id)}">🥃 Noter un dram ici</a>
+    <div class="grid2" style="margin-top:8px">
+      <button class="btn ${visitedOf(S.me.name).has(id) ? 'okbtn' : ''}" id="visBtn">${visitedOf(S.me.name).has(id) ? '✓ Visité' : '○ Marquer visité'}</button>
       <button class="btn" id="wishBtn">${wish.has(id) ? '★ Dans ma liste' : '☆ À visiter'}</button>
     </div>
+    ${(() => { const who = MEMBERS.filter(m => visitedOf(m).has(id)); return who.length ? `<p class="small muted row" style="margin-top:10px">Déjà passés : <span class="dots" style="margin-left:6px">${who.map(n => avatar(n)).join('')}</span></p>` : ''; })()}
     ${wishers.length ? `<p class="small muted row" style="margin-top:10px">Veulent y passer : <span class="dots" style="margin-left:6px">${wishers.map(n => avatar(n)).join('')}</span></p>` : ''}
     <h2>Dégustations du club (${ds.length})</h2>
     ${Object.values(groups).map(g => {
@@ -229,10 +262,11 @@ function vStand(id) {
       return `<div class="card" style="margin-bottom:10px">
         <div class="row"><b class="grow">${esc(g[0].bottle)}</b>${a != null ? scoreTag(Math.round(a)) : ''}</div>
         ${g.map(d => `<div class="row" style="margin-top:8px;cursor:pointer" data-dram="${d.id}">${avatar(d.author)}<span class="grow small">${esc(d.author)}${d.fav ? ' ❤️' : ''}${d.rebuy ? ' 🛒' : ''} <span class="muted">${esc((d.comment || '').slice(0, 60))}</span></span>${scoreTag(d.score)}</div>`).join('')}
-        ${g.some(d => d.author === S.me.name) ? '' : `<a class="btn sm" style="margin-top:10px" href="#new?from=${g[0].id}">+ Je le goûte aussi</a>`}
+        ${g.some(d => d.author === S.me.name) ? `<a class="btn sm ghost" style="margin-top:10px" href="#edit/${g.find(d => d.author === S.me.name).id}">✏️ Modifier mon avis</a>` : `<a class="btn sm primary" style="margin-top:10px" href="#new?from=${g[0].id}">+ Donner mon avis</a>`}
       </div>`;
     }).join('') || `<div class="empty"><div class="e">🥃</div>Personne n’a encore noté de dram ici.</div>`}`;
   $('#wishBtn').onclick = () => toggleWish(id);
+  $('#visBtn').onclick = () => toggleVisited(id);
   app.querySelectorAll('[data-dram]').forEach(el => el.onclick = () => location.hash = 'dram/' + el.dataset.dram);
 }
 
@@ -259,7 +293,7 @@ function vDram(id) {
     ${others.length ? `<h2>Les autres membres</h2>${others.map(dramRow).join('')}` : ''}
     <div class="grid2" style="margin-top:18px">
       ${mine ? `<a class="btn" href="#edit/${d.id}">✏️ Modifier</a><button class="btn" id="del">🗑 Supprimer</button>`
-             : others.some(o => o.author === S.me.name) ? '' : `<a class="btn primary" href="#new?from=${d.id}" style="grid-column:span 2">🥃 Je le goûte aussi</a>`}
+             : others.some(o => o.author === S.me.name) ? '' : `<a class="btn primary" href="#new?from=${d.id}" style="grid-column:span 2">🥃 Donner mon avis sur cette bouteille</a>`}
     </div>`;
   if (d.hasPhoto) store.getPhoto(d.id).then(p => { const i = $('#heroImg'); if (i && imgSrc(p)) i.src = p; });
   bindDramRows();
@@ -296,8 +330,8 @@ function vEdit(id, q) {
       ${ZONES.map(z => `<optgroup label="${esc(z.name)}">${STANDS.filter(s => s.zone === z.id).map(s => `<option value="${s.id}" ${s.id === d.standId ? 'selected' : ''}>${esc(s.num)} · ${esc(s.name)}</option>`).join('')}</optgroup>`).join('')}
     </select>
     <label class="f">Bouteille / dram *</label>
-    <input class="in" id="bottle" placeholder="ex. Ardbeg Uigeadail, Chichibu The First Ten…" value="${esc(d.bottle)}" autocomplete="off" list="bottles">
-    <datalist id="bottles"></datalist>
+    <input class="in" id="bottle" placeholder="ex. Ardbeg Uigeadail, Chichibu The First Ten…" value="${esc(d.bottle)}" autocomplete="off">
+    ${existing ? '' : '<div id="known"></div>'}
     <div class="grid3">
       <div><label class="f">Âge</label><input class="in" id="age" value="${esc(d.age)}" placeholder="12 ans"></div>
       <div><label class="f">Degré %</label><input class="in" id="abv" inputmode="decimal" value="${esc(d.abv)}" placeholder="46"></div>
@@ -321,10 +355,8 @@ function vEdit(id, q) {
     </div>
 
     <label class="f">Photo (étiquette, verre…)</label>
-    <label class="photo-drop" id="drop">
-      <input type="file" accept="image/*" capture="environment" id="file" hidden>
-      <div id="prev">${imgSrc(thumb) ? `<img src="${imgSrc(thumb)}">` : '📷 Prendre / choisir une photo'}</div>
-    </label>
+    <div class="photo-drop" id="prev">${imgSrc(thumb) ? `<img src="${imgSrc(thumb)}">` : '📷 Pas encore de photo'}</div>
+    ${photoButtons('pf')}
     ${imgSrc(thumb) ? `<button type="button" class="btn sm ghost" id="rmPhoto" style="margin-top:6px">Retirer la photo</button>` : ''}
 
     <label class="f">Nez</label><textarea class="in" id="nose">${esc(d.nose)}</textarea>
@@ -335,26 +367,63 @@ function vEdit(id, q) {
     <div class="sticky-save"><button class="btn primary block" id="saveBtn">Enregistrer</button></div>
   </div>`;
 
-  const fillBottles = () => {
-    const sid = $('#stand').value;
-    const names = [...new Set(S.drams.filter(x => !sid || x.standId === sid).map(x => x.bottle))].slice(0, 40);
-    $('#bottles').innerHTML = names.map(n => `<option value="${esc(n)}">`).join('');
+  // Bouteilles déjà créées par le club : on les retrouve pour ajouter son propre avis
+  let picked = from ? bottleKey(from) : '';
+  const renderKnown = () => {
+    const box = $('#known'); if (!box) return;
+    const sid = $('#stand').value, typed = norm($('#bottle').value);
+    const groups = {};
+    S.drams.forEach(x => {
+      if (sid ? x.standId !== sid : typed.length < 2) return;
+      if (typed && !picked && !norm(x.bottle).includes(typed) && !norm(standOf(x).name).includes(typed)) return;
+      (groups[bottleKey(x)] ||= []).push(x);
+    });
+    const list = Object.entries(groups).sort((a, b) => b[1].length - a[1].length).slice(0, 8);
+    if (!list.length) { box.innerHTML = ''; return; }
+    box.innerHTML = `<div class="small muted" style="margin:10px 0 6px">${sid ? 'Déjà goûtées ici par le club' : 'Déjà notées par le club'} · touchez pour donner votre avis</div>` +
+      list.map(([k, g]) => {
+        const mine = g.find(x => x.author === S.me.name);
+        const a = avg(g.map(x => x.score).filter(v => v != null));
+        return `<div class="dram known ${k === picked ? 'picked' : ''}" data-k="${esc(k)}" data-mine="${mine ? mine.id : ''}">
+          <div class="grow"><div class="t">${k === picked ? '✓ ' : ''}${esc(g[0].bottle)}</div>
+            <div class="m">${sid ? '' : '#' + esc(standOf(g[0]).num) + ' ' + esc(standOf(g[0]).name) + ' · '}${[g[0].age, g[0].abv ? g[0].abv + ' %' : '', g[0].cask].filter(Boolean).map(esc).join(' · ')}</div>
+            <div class="dots" style="margin-top:4px;padding-left:5px">${[...new Set(g.map(x => x.author))].map(n => avatar(n)).join('')}</div></div>
+          ${mine ? '<span class="pill">✏️ Ma fiche</span>' : (a != null ? scoreTag(Math.round(a)) : '')}
+        </div>`;
+      }).join('');
+    box.querySelectorAll('.known').forEach(el => el.onclick = () => {
+      if (el.dataset.mine) { location.hash = 'edit/' + el.dataset.mine; return; }
+      const g = groups[el.dataset.k], src = g[0];
+      if (!$('#stand').value && src.standId) $('#stand').value = src.standId;
+      $('#bottle').value = src.bottle;
+      [['age', 'age'], ['abv', 'abv'], ['price', 'price'], ['cask', 'cask']].forEach(([f, id]) => { if (!$('#' + id).value && src[f]) $('#' + id).value = src[f]; });
+      picked = el.dataset.k; renderKnown();
+      toast(`✓ Bouteille de ${[...new Set(g.map(x => x.author))].join(", ")} : notez-la !`);
+      $('#score').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
   };
-  fillBottles(); $('#stand').onchange = fillBottles;
+  renderKnown();
+  $('#stand').onchange = () => { picked = ''; renderKnown(); };
+  $('#bottle').oninput = () => { picked = ''; renderKnown(); };
   $('#score').oninput = e => { $('#sv').textContent = e.target.value; };
   app.querySelectorAll('[data-tag]').forEach(b => b.onclick = () => { const t = b.dataset.tag; tags.has(t) ? tags.delete(t) : tags.add(t); b.classList.toggle('on'); });
-  $('#file').onchange = async e => {
+  app.querySelectorAll('input.pf').forEach(inp => inp.onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
     $('#prev').textContent = '⏳ Compression…';
     try { const p = await photoPair(f); photo = p.full; thumb = p.thumb; removePhoto = false; $('#prev').innerHTML = `<img src="${imgSrc(p.full)}">`; }
     catch (err) { $('#prev').textContent = '⚠️ ' + err.message; }
-  };
-  const rm = $('#rmPhoto'); if (rm) rm.onclick = () => { removePhoto = true; photo = null; thumb = null; $('#prev').textContent = '📷 Prendre / choisir une photo'; rm.remove(); };
+    e.target.value = '';
+  });
+  const rm = $('#rmPhoto'); if (rm) rm.onclick = () => { removePhoto = true; photo = null; thumb = null; $('#prev').textContent = '📷 Pas encore de photo'; rm.remove(); };
 
   $('#saveBtn').onclick = () => {
     const bottle = $('#bottle').value.trim();
     if (!bottle) { toast('Indiquez le nom de la bouteille'); $('#bottle').focus(); return; }
     const standId = $('#stand').value;
+    if (!existing) {
+      const dup = S.drams.find(x => x.author === S.me.name && bottleKey(x) === bottleKey({ standId, bottle }));
+      if (dup && confirm('Vous avez déjà une fiche pour cette bouteille sur ce stand.\n\nOK : ouvrir votre fiche existante\nAnnuler : créer une 2e fiche')) { location.hash = 'edit/' + dup.id; return; }
+    }
     const data = {
       author: S.me.name, standId, standName: STAND_BY_ID[standId]?.name || '', bottle,
       age: $('#age').value.trim(), abv: $('#abv').value.trim().replace(',', '.'), price: $('#price').value.trim().replace(',', '.'), cask: $('#cask').value.trim(),
@@ -437,7 +506,7 @@ function vClub() {
       <h2>📈 Meilleures notes</h2>${rankList(top)}` : `<div class="empty"><div class="e">🏆</div>Le classement apparaîtra avec les premières notes.</div>`;
   } else {
     const zonesVisited = new Set(S.drams.map(d => STAND_BY_ID[d.standId]?.zone).filter(Boolean));
-    const standsVisited = new Set(S.drams.map(d => d.standId).filter(Boolean));
+    const standsVisited = new Set(MEMBERS.flatMap(m => [...visitedOf(m)]));
     html += `<div class="grid3"><div class="stat"><b>${S.drams.length}</b><span>drams notés</span></div><div class="stat"><b>${standsVisited.size}</b><span>stands visités / ${STANDS.length}</span></div><div class="stat"><b>${zonesVisited.size}</b><span>zones / ${ZONES.length}</span></div></div>`;
     const stats = MEMBERS.map(m => {
       const ds = S.drams.filter(d => d.author === m);
@@ -445,7 +514,7 @@ function vClub() {
       const best = ds.slice().sort((a, b) => (b.score || 0) - (a.score || 0))[0];
       const tagCount = {}; ds.forEach(d => (d.tags || []).forEach(t => tagCount[t] = (tagCount[t] || 0) + 1));
       const favTag = Object.entries(tagCount).sort((a, b) => b[1] - a[1])[0];
-      return { m, n: ds.length, a: avg(sc), best, favTag, stands: new Set(ds.map(d => d.standId)).size };
+      return { m, n: ds.length, a: avg(sc), best, favTag, stands: visitedOf(m).size };
     });
     const maxN = Math.max(1, ...stats.map(s => s.n));
     html += stats.map(s => `<div class="card" style="margin-top:10px">
@@ -492,16 +561,17 @@ function vSouvenirs() {
 function addMoment() {
   let full = null, thumb = null;
   sheet(`<h1 style="margin-top:0">Nouveau souvenir</h1>
-    <label class="photo-drop"><input type="file" accept="image/*" id="mf" hidden><div id="mp">📷 Photo (facultatif)</div></label>
+    <div class="photo-drop" id="mp">📷 Photo (facultatif)</div>
+    ${photoButtons('mf')}
     <label class="f">Texte</label><textarea class="in editing" id="mt" placeholder="La masterclass de fou, la rencontre avec le master blender…"></textarea>
     <label class="f">Stand lié (facultatif)</label>
     <select class="in" id="ms"><option value="">—</option>${STANDS.map(s => `<option value="${s.id}">${esc(s.num)} · ${esc(s.name)}</option>`).join('')}</select>
     <button class="btn primary block" id="mok" style="margin-top:14px">Publier</button>`, (el, close) => {
-    $('#mf', el).onchange = async e => {
+    el.querySelectorAll('input.mf').forEach(inp => inp.onchange = async e => {
       const f = e.target.files[0]; if (!f) return; $('#mp', el).textContent = '⏳ Compression…';
       try { const p = await photoPair(f); full = p.full; thumb = await compress(f, 800, 120_000, 0.7); $('#mp', el).innerHTML = `<img src="${imgSrc(thumb)}">`; }
       catch (err) { $('#mp', el).textContent = '⚠️ ' + err.message; }
-    };
+    });
     $('#mok', el).onclick = () => {
       const text = $('#mt', el).value.trim();
       if (!text && !full) { toast('Ajoutez une photo ou un texte'); return; }

@@ -13,7 +13,8 @@ a{color:var(--amber)}
 
 /* ---------- header ---------- */
 header.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));background:linear-gradient(135deg,#132659,#0c1530);border-bottom:1px solid var(--line)}
-.logo{font-weight:900;font-size:22px;letter-spacing:-.5px}
+.logo{font-weight:900;font-size:22px;letter-spacing:-.5px;display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink)}
+.logo img{height:36px;width:auto;display:block}
 .logo b{color:var(--red)}
 .top .sync{font-size:12px;color:var(--mute);margin-left:auto}
 .me{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:5px 12px 5px 5px;display:flex;align-items:center;gap:7px;font-size:14px;cursor:pointer}
@@ -130,7 +131,7 @@ textarea.in{min-height:64px;resize:vertical}
 .who button.on{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber) inset}
 
 /* ---------- sheet / toast ---------- */
-.toast{position:fixed;white-space:nowrap;left:50%;transform:translateX(-50%);bottom:calc(var(--nav) + var(--safe-b) + 16px);background:#fff;color:#111;padding:10px 16px;border-radius:12px;font-weight:600;z-index:60;box-shadow:0 8px 24px #0008;max-width:90vw}
+.toast{position:fixed;text-align:center;width:max-content;left:50%;transform:translateX(-50%);bottom:calc(var(--nav) + var(--safe-b) + 16px);background:#fff;color:#111;padding:10px 16px;border-radius:12px;font-weight:600;z-index:60;box-shadow:0 8px 24px #0008;max-width:90vw}
 .sheet-bg{position:fixed;inset:0;background:#0009;z-index:50;display:flex;align-items:flex-end}
 .sheet{background:var(--bg2);width:100%;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + var(--safe-b));max-height:85dvh;overflow:auto}
 .empty{text-align:center;padding:30px 10px;color:var(--mute)}
@@ -138,3 +139,31 @@ textarea.in{min-height:64px;resize:vertical}
 .seg{display:flex;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:3px;margin-bottom:12px}
 .seg button{flex:1;border:0;background:none;padding:8px;border-radius:9px;font-weight:700;color:var(--mute);cursor:pointer}
 .seg button.on{background:var(--card);color:var(--ink)}
+.dram.known{padding:9px 10px;margin-top:6px}
+.dram.known+.dram.known{margin-top:6px}
+.dram.picked{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber) inset}
+
+/* ---------- progression / visités ---------- */
+.prog{margin-bottom:10px}
+.prog summary{list-style:none;cursor:pointer}
+.prog summary::-webkit-details-marker{display:none}
+.pill.ok{background:#43c08a33;color:#7fe0b0}
+.bar2{position:relative;height:10px;border-radius:5px;background:#ffffff14;overflow:hidden;margin-top:8px;display:block}
+.bar2 i{position:absolute;left:0;top:0;bottom:0;background:var(--ok);border-radius:5px}
+.bar2 i.club{background:#43c08a4d}
+.bar2.thin{height:5px;margin-top:6px}
+.lg{display:inline-block;width:10px;height:10px;border-radius:3px;margin:0 4px 0 2px;vertical-align:-1px}
+.lg.me{background:var(--ok)} .lg.club{background:#43c08a4d;margin-left:8px}
+.ztiles{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-top:12px}
+.ztile{min-width:0;color:var(--ink);text-align:left;border:1px solid var(--line);border-left:4px solid var(--c);background:var(--bg2);border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.ztile .zn{flex:1;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ztile .zc{font-size:12px;color:var(--mute);font-weight:700}
+.ztile .bar2{flex-basis:100%}
+.ztile.full{border-color:var(--ok);border-left-color:var(--c);background:#43c08a1a}
+.zcount{font-size:12px;color:var(--mute);letter-spacing:0;text-transform:none}
+.stand.visited{background:linear-gradient(90deg,#43c08a24,transparent 70%);border-left:3px solid var(--ok);padding-left:6px;border-radius:6px}
+.stand.visited .name::after{content:""}
+.vcheck{flex:none;width:32px;height:32px;border-radius:50%;border:2px solid #ffffff30;background:none;color:transparent;font-weight:900;font-size:16px;cursor:pointer;display:grid;place-items:center;padding:0}
+.vcheck.on{background:var(--ok);border-color:var(--ok);color:#06281a}
+.btn.okbtn{background:#43c08a26;border-color:var(--ok);color:#9ff0c7}
+.wk-logo{width:min(280px,80%);display:block;margin:0 auto 14px}
