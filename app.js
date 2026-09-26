@@ -4,7 +4,6 @@ import * as store from './store.js';
 
 // ============ état ============
 const S = { me: null, drams: [], moments: [], wish: {}, members: [], filters: { q: '', zone: '', mode: 'all' }, feedWho: '', clubTab: 'feed', unsub: [] };
-const TAGS = ['Fruité', 'Tourbé', 'Fumé', 'Sherry', 'Boisé', 'Vanillé', 'Épicé', 'Floral', 'Maritime', 'Agrumes', 'Miel', 'Chocolat', 'Herbacé', 'Cask strength', 'Rhum agricole', 'Coup de cœur'];
 const COLORS = ['#f0a93b', '#6fc3d3', '#e99bb3', '#9be07a', '#c9a0ff', '#ff8a65', '#4dd0e1', '#ffd54f'];
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app');
@@ -123,11 +122,13 @@ $('#meBtn').onclick = () => sheet(`
   <p class="small muted">${store.DEMO ? 'Mode démo : données locales à ce téléphone.' : 'Connecté au carnet partagé du club.'} ${S.drams.filter(d => d.author === S.me.name).length} drams notés.</p>
   <div class="stack">
     <button class="btn block" id="exCsv">⬇️ Exporter toutes les notes (CSV)</button>
+    <button class="btn block" id="exPh">🖼️ Exporter toutes les photos du club (zip)</button>
     <button class="btn block" id="exJson">💾 Sauvegarde complète (JSON)</button>
     <button class="btn block ghost" id="logout">Changer de membre / se déconnecter</button>
   </div>`, (el, close) => {
   $('#exCsv', el).onclick = () => { exportCsv(); close(); };
   $('#exJson', el).onclick = () => { exportJson(); close(); };
+  $('#exPh', el).onclick = () => { close(); exportPhotos(); };
   $('#logout', el).onclick = async () => { close(); S.unsub.forEach(u => u()); await store.leave(); location.hash = ''; loginView(); };
 });
 
@@ -278,17 +279,16 @@ function vDram(id) {
   const others = S.drams.filter(x => x.id !== d.id && bottleKey(x) === bottleKey(d));
   app.innerHTML = `
     <a href="${s.id ? '#stand/' + s.id : '#club'}" class="small">‹ ${esc(s.name)}</a>
-    ${d.hasPhoto || d.thumb ? `<div class="hero"><img id="heroImg" src="${imgSrc(d.thumb)}" alt=""></div>` : ''}
+    ${d.hasPhoto || d.thumb ? `<div class="hero"><img id="heroImg" src="${imgSrc(d.thumb)}" alt=""><button class="dlbtn" id="dlPhoto" aria-label="Télécharger la photo">⬇️</button></div>` : ''}
     <div class="row" style="margin-top:8px"><div class="grow"><h1 style="margin:0">${esc(d.bottle)}</h1>
       <div class="small muted">${numBadge(s, true)} ${esc(s.name)}</div></div>
       <div class="bigscore" style="font-size:40px">${d.score ?? '–'}<div class="small muted" style="font-size:11px;font-weight:600">/100</div></div></div>
     <div class="row" style="margin:10px 0">${avatar(d.author)}<span class="grow small">${esc(d.author)} · ${fmtTime(d.at)}</span>${d.fav ? '❤️' : ''}${d.rebuy ? ' 🛒' : ''}</div>
     <dl class="kv card">
-      ${[['Âge', d.age], ['Degré', d.abv ? d.abv + ' %' : ''], ['Fût', d.cask], ['Prix', d.price ? d.price + ' €' : '']].filter(x => x[1]).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('') || '<dt>—</dt><dd class="muted">Pas de détails</dd>'}
+      ${[['Âge', d.age], ['Degré', d.abv ? d.abv + ' %' : ''], ['Fût', d.cask]].filter(x => x[1]).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('') || '<dt>—</dt><dd class="muted">Pas de détails</dd>'}
     </dl>
-    ${(d.tags || []).length ? `<div style="margin-top:10px">${d.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
     <div class="note-block">
-      ${[['Nez', d.nose], ['Bouche', d.palate], ['Finale', d.finish], ['Commentaire', d.comment]].filter(x => x[1]).map(([k, v]) => `<h3>${k}</h3><p>${esc(v)}</p>`).join('')}
+      ${[['Commentaire', d.comment]].filter(x => x[1]).map(([k, v]) => `<h3>${k}</h3><p>${esc(v)}</p>`).join('')}
     </div>
     ${others.length ? `<h2>Les autres membres</h2>${others.map(dramRow).join('')}` : ''}
     <div class="grid2" style="margin-top:18px">
@@ -296,6 +296,7 @@ function vDram(id) {
              : others.some(o => o.author === S.me.name) ? '' : `<a class="btn primary" href="#new?from=${d.id}" style="grid-column:span 2">🥃 Donner mon avis sur cette bouteille</a>`}
     </div>`;
   if (d.hasPhoto) store.getPhoto(d.id).then(p => { const i = $('#heroImg'); if (i && imgSrc(p)) i.src = p; });
+  const dl = $('#dlPhoto'); if (dl) dl.onclick = () => downloadPhoto(d.id, d.hasPhoto, d.thumb, photoName(d.at, d.author, d.bottle));
   bindDramRows();
   const del = $('#del');
   if (del) del.onclick = () => { if (confirm('Supprimer ce dram ?')) { store.remove('drams', d.id); if (d.hasPhoto) store.removePhoto(d.id); location.hash = s.id ? 'stand/' + s.id : 'club'; toast('Supprimé'); } };
@@ -318,9 +319,8 @@ function vEdit(id, q) {
   const existing = id ? S.drams.find(x => x.id === id) : null;
   if (id && (!existing || existing.author !== S.me.name)) return vDram(id);
   const from = q.get('from') ? S.drams.find(x => x.id === q.get('from')) : null;
-  const d = existing || { standId: q.get('stand') || from?.standId || '', bottle: from?.bottle || '', age: from?.age || '', abv: from?.abv || '', cask: from?.cask || '', price: from?.price || '', score: 80, tags: [], fav: false, rebuy: false };
+  const d = existing || { standId: q.get('stand') || from?.standId || '', bottle: from?.bottle || '', age: from?.age || '', abv: from?.abv || '', cask: from?.cask || '', score: 80, tags: [], fav: false, rebuy: false };
   let photo = null, thumb = d.thumb || null, removePhoto = false;
-  const tags = new Set(d.tags || []);
   app.innerHTML = `<div class="editing">
     <a href="javascript:history.back()" class="small">‹ Annuler</a>
     <h1>${existing ? 'Modifier le dram' : 'Nouveau dram'}</h1>
@@ -332,10 +332,9 @@ function vEdit(id, q) {
     <label class="f">Bouteille / dram *</label>
     <input class="in" id="bottle" placeholder="ex. Ardbeg Uigeadail, Chichibu The First Ten…" value="${esc(d.bottle)}" autocomplete="off">
     ${existing ? '' : '<div id="known"></div>'}
-    <div class="grid3">
+    <div class="grid2">
       <div><label class="f">Âge</label><input class="in" id="age" value="${esc(d.age)}" placeholder="12 ans"></div>
       <div><label class="f">Degré %</label><input class="in" id="abv" inputmode="decimal" value="${esc(d.abv)}" placeholder="46"></div>
-      <div><label class="f">Prix €</label><input class="in" id="price" inputmode="decimal" value="${esc(d.price)}" placeholder="75"></div>
     </div>
     <label class="f">Fût / finition</label>
     <input class="in" id="cask" value="${esc(d.cask)}" placeholder="Sherry oloroso, ex-bourbon…">
@@ -346,8 +345,6 @@ function vEdit(id, q) {
       <div class="row small muted" style="justify-content:space-between"><span>50 bof</span><span>75 correct</span><span>85 très bon</span><span>95 ✨</span></div>
     </div>
 
-    <label class="f">Profil</label>
-    <div>${TAGS.map(t => `<button type="button" class="chip ${tags.has(t) ? 'on' : ''}" data-tag="${esc(t)}" style="margin:0 4px 6px 0">${esc(t)}</button>`).join('')}</div>
 
     <div class="grid2" style="margin-top:8px">
       <label class="toggle"><input type="checkbox" id="fav" ${d.fav ? 'checked' : ''}>❤️ Coup de cœur</label>
@@ -359,10 +356,7 @@ function vEdit(id, q) {
     ${photoButtons('pf')}
     ${imgSrc(thumb) ? `<button type="button" class="btn sm ghost" id="rmPhoto" style="margin-top:6px">Retirer la photo</button>` : ''}
 
-    <label class="f">Nez</label><textarea class="in" id="nose">${esc(d.nose)}</textarea>
-    <label class="f">Bouche</label><textarea class="in" id="palate">${esc(d.palate)}</textarea>
-    <label class="f">Finale</label><textarea class="in" id="finish">${esc(d.finish)}</textarea>
-    <label class="f">Commentaire libre</label><textarea class="in" id="comment" placeholder="Ambiance, anecdote du stand…">${esc(d.comment)}</textarea>
+    <label class="f">Commentaire</label><textarea class="in" id="comment" placeholder="Ambiance, anecdote du stand…">${esc(d.comment)}</textarea>
 
     <div class="sticky-save"><button class="btn primary block" id="saveBtn">Enregistrer</button></div>
   </div>`;
@@ -396,7 +390,7 @@ function vEdit(id, q) {
       const g = groups[el.dataset.k], src = g[0];
       if (!$('#stand').value && src.standId) $('#stand').value = src.standId;
       $('#bottle').value = src.bottle;
-      [['age', 'age'], ['abv', 'abv'], ['price', 'price'], ['cask', 'cask']].forEach(([f, id]) => { if (!$('#' + id).value && src[f]) $('#' + id).value = src[f]; });
+      [['age', 'age'], ['abv', 'abv'], ['cask', 'cask']].forEach(([f, id]) => { if (!$('#' + id).value && src[f]) $('#' + id).value = src[f]; });
       picked = el.dataset.k; renderKnown();
       toast(`✓ Bouteille de ${[...new Set(g.map(x => x.author))].join(", ")} : notez-la !`);
       $('#score').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -406,7 +400,6 @@ function vEdit(id, q) {
   $('#stand').onchange = () => { picked = ''; renderKnown(); };
   $('#bottle').oninput = () => { picked = ''; renderKnown(); };
   $('#score').oninput = e => { $('#sv').textContent = e.target.value; };
-  app.querySelectorAll('[data-tag]').forEach(b => b.onclick = () => { const t = b.dataset.tag; tags.has(t) ? tags.delete(t) : tags.add(t); b.classList.toggle('on'); });
   app.querySelectorAll('input.pf').forEach(inp => inp.onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
     $('#prev').textContent = '⏳ Compression…';
@@ -426,9 +419,9 @@ function vEdit(id, q) {
     }
     const data = {
       author: S.me.name, standId, standName: STAND_BY_ID[standId]?.name || '', bottle,
-      age: $('#age').value.trim(), abv: $('#abv').value.trim().replace(',', '.'), price: $('#price').value.trim().replace(',', '.'), cask: $('#cask').value.trim(),
-      score: +$('#score').value, tags: [...tags], fav: $('#fav').checked, rebuy: $('#rebuy').checked,
-      nose: $('#nose').value.trim(), palate: $('#palate').value.trim(), finish: $('#finish').value.trim(), comment: $('#comment').value.trim(),
+      age: $('#age').value.trim(), abv: $('#abv').value.trim().replace(',', '.'), cask: $('#cask').value.trim(),
+      score: +$('#score').value, fav: $('#fav').checked, rebuy: $('#rebuy').checked,
+      comment: $('#comment').value.trim(),
       thumb: removePhoto ? null : (thumb || null), hasPhoto: removePhoto ? false : (photo ? true : !!d.hasPhoto),
       updated: Date.now(), at: d.at || Date.now(),
     };
@@ -483,27 +476,13 @@ function vPlan() {
 // ============ vue : CLUB ============
 function vClub() {
   const tab = S.clubTab;
-  let html = `<h1>Le club</h1><div class="seg">${[['feed', 'Fil'], ['top', 'Top'], ['members', 'Membres']].map(([k, l]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  let html = `<h1>Le club</h1><div class="seg">${[['feed', 'Fil'], ['members', 'Membres']].map(([k, l]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   if (tab === 'feed') {
     const who = S.feedWho;
     const list = S.drams.filter(d => !who || d.author === who);
     html += `<div class="chips" style="padding-top:0"><button class="chip ${!who ? 'on' : ''}" data-who="">Tout le monde</button>${MEMBERS.map(m => `<button class="chip ${who === m ? 'on' : ''}" data-who="${esc(m)}">${esc(m)}</button>`).join('')}</div>
       <div style="margin-top:8px">${list.map(dramRow).join('') || `<div class="empty"><div class="e">🥃</div>Aucun dram pour l’instant.<br>Appuyez sur <b>+</b> pour commencer !</div>`}</div>`;
-  } else if (tab === 'top') {
-    const groups = {};
-    S.drams.forEach(d => { if (d.score != null) (groups[bottleKey(d)] ||= []).push(d); });
-    const rows = Object.values(groups).map(g => ({ g, a: avg(g.map(d => d.score)), n: new Set(g.map(d => d.author)).size, favs: g.filter(d => d.fav).length }));
-    const top = rows.sort((x, y) => y.a - x.a || y.n - x.n).slice(0, 25);
-    const consensus = rows.filter(r => r.n >= 2).sort((x, y) => y.a - x.a).slice(0, 10);
-    const hearts = rows.filter(r => r.favs).sort((x, y) => y.favs - x.favs || y.a - x.a).slice(0, 10);
-    const rankList = arr => arr.map((r, i) => `<div class="dram" data-dram="${r.g[0].id}"><span class="rank">${i + 1}</span>
-        <div class="grow"><div class="t">${esc(r.g[0].bottle)}</div><div class="m">#${esc(standOf(r.g[0]).num)} ${esc(standOf(r.g[0]).name)}</div>
-        <div class="dots" style="margin-top:4px;padding-left:5px">${[...new Set(r.g.map(d => d.author))].map(n => avatar(n)).join('')}</div></div>
-        ${r.favs ? `<span class="small">❤️${r.favs > 1 ? r.favs : ''}</span>` : ''}${scoreTag(Math.round(r.a))}</div>`).join('');
-    html += top.length ? `
-      ${consensus.length ? `<h2>🏆 Consensus (≥ 2 dégustateurs)</h2>${rankList(consensus)}` : ''}
-      ${hearts.length ? `<h2>❤️ Coups de cœur</h2>${rankList(hearts)}` : ''}
-      <h2>📈 Meilleures notes</h2>${rankList(top)}` : `<div class="empty"><div class="e">🏆</div>Le classement apparaîtra avec les premières notes.</div>`;
+
   } else {
     const zonesVisited = new Set(S.drams.map(d => STAND_BY_ID[d.standId]?.zone).filter(Boolean));
     const standsVisited = new Set(MEMBERS.flatMap(m => [...visitedOf(m)]));
@@ -512,8 +491,7 @@ function vClub() {
       const ds = S.drams.filter(d => d.author === m);
       const sc = ds.map(d => d.score).filter(x => x != null);
       const best = ds.slice().sort((a, b) => (b.score || 0) - (a.score || 0))[0];
-      const tagCount = {}; ds.forEach(d => (d.tags || []).forEach(t => tagCount[t] = (tagCount[t] || 0) + 1));
-      const favTag = Object.entries(tagCount).sort((a, b) => b[1] - a[1])[0];
+      const favTag = null;
       return { m, n: ds.length, a: avg(sc), best, favTag, stands: visitedOf(m).size };
     });
     const maxN = Math.max(1, ...stats.map(s => s.n));
@@ -539,11 +517,12 @@ function vSouvenirs() {
   app.innerHTML = `<h1>Souvenirs</h1>
     <button class="btn primary block" id="addM">📸 Ajouter un souvenir</button>
     ${shopping.length ? `<details class="card" style="margin-top:12px"><summary><b>🛒 Ma liste d’achats (${shopping.length})</b></summary>
-      <div style="margin-top:8px">${shopping.map(d => `<div class="row small" style="padding:6px 0;border-top:1px solid #ffffff10"><span class="grow">${esc(d.bottle)} <span class="muted">· ${esc(standOf(d).name)}</span></span>${d.price ? `<span class="muted">${esc(d.price)} €</span>` : ''}${scoreTag(d.score)}</div>`).join('')}</div></details>` : ''}
+      <div style="margin-top:8px">${shopping.map(d => `<div class="row small" style="padding:6px 0;border-top:1px solid #ffffff10"><span class="grow">${esc(d.bottle)} <span class="muted">· ${esc(standOf(d).name)}</span></span>${scoreTag(d.score)}</div>`).join('')}</div></details>` : ''}
     <h2>Journal du salon</h2>
     ${S.moments.map(m => `<div class="moment" data-mid="${m.id}">
       ${imgSrc(m.thumb) ? `<img src="${imgSrc(m.thumb)}" alt="" loading="lazy" data-full="${m.hasPhoto ? m.id : ''}">` : ''}
       <div class="b"><div class="row small">${avatar(m.author)}<b class="grow">${esc(m.author)}</b><span class="muted">${fmtTime(m.at)}</span>
+        ${imgSrc(m.thumb) ? `<button class="iconbtn" data-dlm="${m.id}" aria-label="Télécharger">⬇️</button>` : ''}
         ${m.author === S.me.name ? `<button class="iconbtn" data-delm="${m.id}" aria-label="Supprimer">🗑</button>` : ''}</div>
         ${m.text ? `<p style="margin:8px 0 0;white-space:pre-wrap">${esc(m.text)}</p>` : ''}
         ${m.standId && STAND_BY_ID[m.standId] ? `<a class="small" href="#stand/${m.standId}">📍 ${esc(STAND_BY_ID[m.standId].name)}</a>` : ''}
@@ -555,6 +534,7 @@ function vSouvenirs() {
     const id = e.target.dataset.full; if (id) store.getPhoto(id).then(p => { if (imgSrc(p)) e.target.src = p; });
   }), { rootMargin: '200px' });
   app.querySelectorAll('img[data-full]').forEach(i => i.dataset.full && io.observe(i));
+  app.querySelectorAll('[data-dlm]').forEach(b => b.onclick = () => { const m = S.moments.find(x => x.id === b.dataset.dlm); downloadPhoto(m.id, m.hasPhoto, m.thumb, photoName(m.at, m.author, m.text || 'souvenir')); });
   app.querySelectorAll('[data-delm]').forEach(b => b.onclick = () => { if (confirm('Supprimer ce souvenir ?')) { const m = S.moments.find(x => x.id === b.dataset.delm); store.remove('moments', m.id); if (m.hasPhoto) store.removePhoto(m.id); } });
 }
 
@@ -588,10 +568,67 @@ function download(name, content, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 function exportCsv() {
-  const cols = ['author', 'num', 'stand', 'zone', 'bottle', 'age', 'abv', 'cask', 'price', 'score', 'tags', 'fav', 'rebuy', 'nose', 'palate', 'finish', 'comment', 'date'];
+  const cols = ['membre', 'stand_num', 'stand', 'zone', 'bouteille', 'age', 'degre', 'fut', 'note', 'coup_de_coeur', 'a_acheter', 'commentaire', 'date'];
   const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const rows = S.drams.map(d => { const s = standOf(d); return [d.author, s.num, s.name, s.zoneName, d.bottle, d.age, d.abv, d.cask, d.price, d.score, (d.tags || []).join(', '), d.fav ? 'oui' : '', d.rebuy ? 'oui' : '', d.nose, d.palate, d.finish, d.comment, d.at ? new Date(d.at).toISOString() : ''].map(q).join(';'); });
+  const rows = S.drams.map(d => { const s = standOf(d); return [d.author, s.num, s.name, s.zoneName, d.bottle, d.age, d.abv, d.cask, d.score, d.fav ? 'oui' : '', d.rebuy ? 'oui' : '', d.comment, d.at ? new Date(d.at).toISOString() : ''].map(q).join(';'); });
   download('wlp26-degustations.csv', '﻿' + cols.join(';') + '\n' + rows.join('\n'), 'text/csv');
+}
+// ---- photos : téléchargement unitaire + export zip ----
+const slugify = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'photo';
+function photoName(at, author, label) {
+  const dt = at ? new Date(at) : new Date(), p = n => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}_${p(dt.getHours())}h${p(dt.getMinutes())}_${slugify(author)}_${slugify(label)}.jpg`;
+}
+const dataUrlBytes = u => { const b = atob(u.split(',')[1]); const a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; };
+async function downloadPhoto(id, hasFull, thumb, name) {
+  toast('⏳ Préparation…', 1200);
+  const full = hasFull ? await store.getPhoto(id) : null;
+  const src = imgSrc(full) || imgSrc(thumb);
+  if (!src) { toast('Photo indisponible (hors ligne ?)'); return; }
+  const blob = new Blob([dataUrlBytes(src)], { type: 'image/jpeg' });
+  const file = new File([blob], name, { type: 'image/jpeg' });
+  // Sur mobile : feuille de partage -> "Enregistrer l'image" dans la galerie
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file] }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  download(name, blob, 'image/jpeg');
+}
+// ZIP minimal (sans compression : les JPEG sont déjà compressés)
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), crc = crc32(f.data), sz = f.data.length;
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint32(14, crc, true); h.setUint32(18, sz, true); h.setUint32(22, sz, true); h.setUint16(26, name.length, true);
+    parts.push(new Uint8Array(h.buffer), name, f.data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+    c.setUint32(16, crc, true); c.setUint32(20, sz, true); c.setUint32(24, sz, true); c.setUint16(28, name.length, true); c.setUint32(42, off, true);
+    central.push(new Uint8Array(c.buffer), name);
+    off += 30 + name.length + sz;
+  }
+  const csz = central.reduce((a, b) => a + b.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csz, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
+}
+async function exportPhotos() {
+  const items = [
+    ...S.drams.filter(d => d.hasPhoto || d.thumb).map(d => ({ id: d.id, full: d.hasPhoto, thumb: d.thumb, name: 'degustations/' + photoName(d.at, d.author, d.bottle) })),
+    ...S.moments.filter(m => m.hasPhoto || m.thumb).map(m => ({ id: m.id, full: m.hasPhoto, thumb: m.thumb, name: 'souvenirs/' + photoName(m.at, m.author, m.text || 'souvenir') })),
+  ];
+  if (!items.length) { toast('Aucune photo pour l’instant'); return; }
+  const files = [], used = new Set(); let miss = 0;
+  for (let i = 0; i < items.length; i++) {
+    toast(`⏳ Photos ${i + 1}/${items.length}…`, 900);
+    const it = items[i];
+    const src = imgSrc(it.full ? await store.getPhoto(it.id) : null) || imgSrc(it.thumb);
+    if (!src) { miss++; continue; }
+    let n = it.name, k = 2; while (used.has(n)) n = it.name.replace(/\.jpg$/, `-${k++}.jpg`); used.add(n);
+    files.push({ name: n, data: dataUrlBytes(src) });
+  }
+  download('whisky-knights-wlp26-photos.zip', makeZip(files), 'application/zip');
+  toast(`✓ ${files.length} photo${files.length > 1 ? 's' : ''} exportée${files.length > 1 ? 's' : ''}${miss ? ` (${miss} indisponibles)` : ''}`, 3500);
 }
 function exportJson() {
   download('wlp26-sauvegarde.json', JSON.stringify({ exportedAt: new Date().toISOString(), drams: S.drams, moments: S.moments.map(({ thumb, ...m }) => m), wishlists: S.wish }, null, 2), 'application/json');

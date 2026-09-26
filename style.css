@@ -167,3 +167,6 @@ textarea.in{min-height:64px;resize:vertical}
 .vcheck.on{background:var(--ok);border-color:var(--ok);color:#06281a}
 .btn.okbtn{background:#43c08a26;border-color:var(--ok);color:#9ff0c7}
 .wk-logo{width:min(280px,80%);display:block;margin:0 auto 14px}
+
+.hero{position:relative}
+.dlbtn{position:absolute;right:10px;bottom:10px;width:44px;height:44px;border-radius:50%;border:0;background:#0c1530cc;color:#fff;font-size:20px;cursor:pointer;backdrop-filter:blur(4px)}

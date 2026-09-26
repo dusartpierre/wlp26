@@ -1,6 +1,6 @@
 // Service worker : l'app s'ouvre même sans réseau dans le hall.
 // Incrémentez VERSION à chaque mise à jour du code pour forcer le rafraîchissement.
-const VERSION = 'wlp26-v4';
+const VERSION = 'wlp26-v5';
 const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'store.js', 'config.js', 'stands.js',
   'plan-wlp26.webp', 'icon-192.png', 'icon-512.png', 'logo-emblem.png', 'logo-wk.png', 'manifest.webmanifest'];
 
