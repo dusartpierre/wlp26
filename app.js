@@ -121,6 +121,7 @@ $('#meBtn').onclick = () => sheet(`
   <div class="row">${avatar(S.me.name)}<b class="grow">${esc(S.me.name)}</b></div>
   <p class="small muted">${store.DEMO ? 'Mode démo : données locales à ce téléphone.' : 'Connecté au carnet partagé du club.'} ${S.drams.filter(d => d.author === S.me.name).length} drams notés.</p>
   <div class="stack">
+    <a class="btn block" href="cave.html#cave">🥃 La Cave des Knights</a>
     <button class="btn block" id="exCsv">⬇️ Exporter toutes les notes (CSV)</button>
     <button class="btn block" id="exPh">🖼️ Exporter toutes les photos du club (zip)</button>
     <button class="btn block" id="exJson">💾 Sauvegarde complète (JSON)</button>

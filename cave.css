@@ -1,0 +1,101 @@
+/* ===== La Cave des Knights : compléments à style.css ===== */
+.cave .logo b{color:var(--amber)}
+.fl{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+
+/* bandeau chiffres */
+.cave-head{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.cave-head div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 4px;text-align:center}
+.cave-head b{display:block;font-size:20px;line-height:1.1}
+.cave-head span{font-size:11px;color:var(--mute)}
+
+/* bouteille du moment */
+.cta-now{display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:10px;border-radius:var(--r);text-decoration:none;color:var(--ink);
+  background:linear-gradient(120deg,#e0323f33,#f0a93b22);border:1px solid #f0a93b66}
+.thumb.sm{width:44px;height:44px}
+
+/* filtres en <select> façon chip */
+select.chip.sel{appearance:none;-webkit-appearance:none;padding-right:24px;background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 13px) 50%,calc(100% - 9px) 50%;background-size:4px 4px;background-repeat:no-repeat;max-width:160px}
+select.chip.sel.on{background-color:var(--ink);color:var(--bg)}
+select.chip.sel option{color:#111;background:#fff}
+
+/* grille de bouteilles */
+.bgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+@media (min-width:560px){.bgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.bcard{display:block;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;padding-bottom:9px}
+.bimg{position:relative;height:150px;background:#f4f1ea;display:grid;place-items:center}
+.bimg .pic{max-width:100%;max-height:150px;width:100%;height:150px;object-fit:contain;display:block}
+.bimg div.pic{display:grid;place-items:center;font-size:44px;background:#0a1128;color:var(--mute)}
+.bnote{position:absolute;right:6px;bottom:6px}
+.bnote .score{box-shadow:0 2px 8px #0006;font-size:14px;padding:3px 7px;min-width:0}
+.bmine{position:absolute;left:6px;top:6px;width:22px;height:22px;border-radius:50%;background:var(--ok);color:#06281a;font-weight:900;font-size:13px;display:grid;place-items:center}
+.bcard .bt{font-weight:700;font-size:14px;line-height:1.25;padding:8px 9px 2px}
+.bcard .bm{font-size:12px;color:var(--mute);padding:0 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* lignes (classement, listes) */
+.brow{text-decoration:none;color:var(--ink)}
+.brow .thumb,.dram .thumb{background:#f4f1ea;object-fit:contain}
+.brow div.thumb,.dram div.thumb{background:#0a1128;object-fit:initial}
+.thumb.fl-big{font-size:28px;background:#0a1128}
+.score.nn{opacity:.5}
+.qp{display:flex;flex-direction:column;align-items:flex-end;gap:1px;text-align:right}
+.qp b{font-size:17px}
+
+/* fiche bouteille */
+.bhero{border-radius:var(--r);overflow:hidden;background:#f4f1ea;margin-top:8px;display:grid;place-items:center;min-height:120px}
+.bhero img{width:100%;max-height:46vh;object-fit:contain;display:block}
+.bhero .nopic{font-size:60px;padding:24px;background:#0a1128;width:100%;text-align:center}
+.bigscore .small{white-space:nowrap}
+.crit .critrow{display:grid;grid-template-columns:110px 1fr 36px;align-items:center;gap:10px;font-size:14px;padding:3px 0}
+.crit .critrow b{text-align:right}
+.crit .bar{height:8px}
+.ntable .nh,.ntable .nr{display:grid;grid-template-columns:minmax(0,1fr) 36px 36px 36px 60px;align-items:center;gap:4px;text-align:center;font-size:14px}
+.ntable .nh{font-size:13px;color:var(--mute);padding-bottom:4px;border-bottom:1px solid var(--line)}
+.ntable .nr{padding:6px 0;border-top:1px solid #ffffff0d}
+.ntable .nr:first-of-type{border-top:0}
+.ntable .nr>span:first-child{text-align:left;min-width:0;overflow:hidden}
+.ntable .nr.me{background:#f0a93b14;border-radius:8px}
+.ntable .nr .score{min-width:0;padding:3px 6px;font-size:13.5px}
+.ntable .ncom{font-size:13px;color:var(--mute);padding:0 4px 8px 34px;white-space:pre-wrap}
+.gal{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.gal img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:#0a1128;cursor:zoom-in}
+
+/* notation */
+.slider .sv{min-width:44px;text-align:center;font-size:22px;font-weight:900}
+.stepb{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--bg2);font-size:20px;font-weight:800;cursor:pointer;line-height:1}
+.score.big{font-size:20px}
+
+/* classement */
+.podium{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;margin:6px 0 14px}
+.pod{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 6px;text-align:center;min-width:0}
+.pod .pic{width:100%;height:70px;object-fit:contain;border-radius:8px;background:#f4f1ea}
+.pod div.pic{display:grid;place-items:center;font-size:30px;background:#0a1128}
+.pod.p1{border-color:var(--gold);box-shadow:0 0 0 1px #ffcf5a55;padding-top:14px}
+.pod.p1 .pic{height:96px}
+.pod .medal{font-size:24px;margin-top:-12px}
+.pod .pt{font-size:12px;font-weight:700;line-height:1.2;margin:2px 0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.pod b{font-size:18px}
+
+/* knights */
+.awards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.aw{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;align-items:flex-start}
+.aw span{font-size:24px}
+.aw small{color:var(--mute);font-size:12px}
+.mcard{display:block;text-decoration:none;color:var(--ink);margin-top:10px}
+
+/* saisons */
+.season{margin-top:10px;padding:10px 12px}
+.season summary{list-style:none;cursor:pointer}
+.season summary::-webkit-details-marker{display:none}
+.season[open] summary{margin-bottom:6px}
+.ev{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #ffffff10;text-decoration:none;color:var(--ink)}
+.evd{width:46px;flex:none;text-align:center;background:var(--bg2);border-radius:10px;padding:4px 0}
+.evd b{display:block;font-size:18px;line-height:1.1}
+.evd span{font-size:10.5px;color:var(--mute)}
+.ev .t{font-weight:650;font-size:14.5px;line-height:1.25}
+.ev .m{font-size:12px;color:var(--mute)}
+.next{margin-bottom:6px;border-color:var(--amber)}
+.bhero img{max-height:34vh}
+.bs-fiche{font-size:44px}
+.bs-fiche .small{margin-top:4px}
+@media (max-width:420px){.cave .me>span:not(.avatar){display:none}.cave .me{padding:4px}}

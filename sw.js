@@ -1,7 +1,8 @@
 // Service worker : l'app s'ouvre même sans réseau dans le hall.
 // Incrémentez VERSION à chaque mise à jour du code pour forcer le rafraîchissement.
-const VERSION = 'wlp26-v5';
+const VERSION = 'wk-v6-cave';
 const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'store.js', 'config.js', 'stands.js',
+  'cave.html', 'cave.js', 'cave.css',
   'plan-wlp26.webp', 'icon-192.png', 'icon-512.png', 'logo-emblem.png', 'logo-wk.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL))); self.skipWaiting(); });
@@ -20,5 +21,5 @@ self.addEventListener('fetch', e => {
   if (u.origin !== location.origin) return;       // Firestore/Auth : jamais intercepté
   // fichiers de l'app : réseau d'abord (mises à jour), cache en secours
   e.respondWith(fetch(e.request).then(r => { const cl = r.clone(); caches.open(VERSION).then(c => c.put(e.request, cl)); return r; })
-    .catch(() => caches.match(e.request).then(r => r || caches.match('index.html'))));
+    .catch(() => caches.match(e.request).then(r => r || caches.match(u.pathname.endsWith('cave.html') ? 'cave.html' : 'index.html'))));
 });

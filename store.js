@@ -85,6 +85,31 @@ export function remove(coll, id) {
   fs.deleteDoc(fs.doc(db, coll, id)).catch(e => alertErr(e));
 }
 
+// Écriture groupée (import) : items = [[collection, id, data], …]. Attend la confirmation du serveur.
+export async function saveMany(items, onProgress) {
+  if (DEMO) {
+    const byColl = {};
+    items.forEach(([c, id, d]) => ((byColl[c] ||= demoRead(c))[id] = d));
+    Object.entries(byColl).forEach(([c, m]) => demoWrite(c, m));
+    onProgress && onProgress(items.length, items.length);
+    return;
+  }
+  let done = 0, i = 0;
+  while (i < items.length) {
+    const batch = fs.writeBatch(db);
+    let ops = 0, bytes = 0;
+    while (i < items.length && ops < 400) {
+      const [c, id, d] = items[i];
+      const sz = JSON.stringify(d).length;
+      if (ops && bytes + sz > 4_000_000) break;   // lots de ~4 Mo max (limite Firestore : 10 Mo)
+      batch.set(fs.doc(db, c, id), d, { merge: true });
+      ops++; bytes += sz; i++;
+    }
+    await batch.commit();
+    done += ops; onProgress && onProgress(done, items.length);
+  }
+}
+
 export async function getPhoto(id) {
   if (DEMO) return demoRead('photos')[id]?.data || null;
   try { const s = await fs.getDoc(fs.doc(db, 'photos', id)); return s.exists() ? s.data().data : null; }

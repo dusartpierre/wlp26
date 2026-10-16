@@ -170,3 +170,8 @@ textarea.in{min-height:64px;resize:vertical}
 
 .hero{position:relative}
 .dlbtn{position:absolute;right:10px;bottom:10px;width:44px;height:44px;border-radius:50%;border:0;background:#0c1530cc;color:#fff;font-size:20px;cursor:pointer;backdrop-filter:blur(4px)}
+
+/* ---------- lien vers l'autre module (WLP 26 <-> Cave) ---------- */
+.switch{font-size:12.5px;font-weight:700;text-decoration:none;color:var(--ink);border:1px solid var(--line);background:var(--bg2);border-radius:99px;padding:5px 10px;white-space:nowrap}
+.top .switch{margin-left:auto}
+.top .switch~.sync{margin-left:0}

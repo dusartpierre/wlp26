@@ -1,3 +1,44 @@
+# Whisky Knights · l'appli du club
+
+Deux modules qui partagent la même connexion (prénom + code club), la même base Firestore et le même hébergement :
+- **La Cave des Knights** (`cave.html`) : les bouteilles des soirées du club, notées par chaque membre.
+- **WLP 26** (`index.html`) : le carnet du Whisky Live Paris 2026 (décrit plus bas).
+
+On passe de l'un à l'autre avec le bouton en haut à droite (« 🥃 Cave » / « WLP 26 › »).
+
+---
+
+# La Cave des Knights
+
+| Onglet | Contenu |
+|---|---|
+| **Cave** | Galerie des bouteilles (photo, drapeau, note du club), recherche, filtres type / pays / saison, « ✍️ À noter » (celles que je n'ai pas notées), tri par date, note, qualité/prix ou A–Z. En haut, la **bouteille du moment** (soirée de moins de 7 jours) avec un bouton « Noter ». |
+| **Fiche** | Note du club /10, barres packaging / nez / goût, qualité/prix et rang, accueil / bouteille / culture, tableau des notes de chaque membre, commentaires, histoire, lien vers la présentation, photos de la soirée. |
+| **Noter** | 3 curseurs de 0 à 10 au dixième (boutons − / + pour ajuster), note globale en direct, commentaire. Une seule note par membre et par bouteille, modifiable. |
+| **＋** | Ajouter la bouteille de la soirée (marque, nom, type, pays, région, degrés, prix, date, saison, accueil, bouteille, culture, photo). |
+| **Classement** | Par note (avec podium), par qualité/prix, par pays, par type ; filtre par saison. |
+| **Knights** | Distinctions (meilleur dénicheur, le plus sévère, le plus généreux, le plus raccord avec le club), notes mises et bouteilles apportées par chaque membre, fiche détaillée par membre. |
+| **Saisons** | Le calendrier des soirées par saison, avec accueil 🏠, bouteille 🍾 et culture 🎓. |
+
+**Calcul des notes (comme dans Notion)**
+- Note globale d'une fiche = 10 % packaging + 30 % nez + 60 % goût. Si un critère manque (anciennes saisons), le calcul se fait sur les critères présents.
+- Note du club = la même pondération appliquée aux moyennes de chaque critère.
+- Qualité/prix = note du club ÷ prix × 100.
+
+**Soirée à l'aveugle** : pendant 2 jours après la date de la soirée, on ne voit pas les notes des autres tant qu'on n'a pas donné la sienne (🙈).
+
+## Mise en place de la Cave (≈ 10 min)
+1. **Règles Firestore** : collez le nouveau `firestore.rules` dans *Firestore Database > Règles*. **Remettez votre code club à la place de `CODE_CLUB`**, puis cliquez sur **Publier**. Deux collections s'ajoutent : `bottles` et `ratings`.
+2. **GitHub** : déposez dans le dépôt les nouveaux fichiers `cave.html`, `cave.js`, `cave.css`, ainsi que les fichiers modifiés `index.html`, `app.js`, `store.js`, `style.css`, `sw.js`, `manifest.webmanifest` et `README.md`.
+3. **Import de l'historique Notion** (une seule fois, de préférence depuis un ordinateur connecté) : ouvrez `…/cave.html`, connectez-vous, puis allez dans le menu prénom > **📥 Importer l'historique Notion** et choisissez `cave-import.json`. L'import ignore ce qui existe déjà, on peut donc le relancer sans créer de doublons.
+   > ⚠️ Ne mettez **pas** `cave-import.json` sur GitHub : le dépôt est public, alors que ce fichier contient les notes et les commentaires du club.
+
+Les prénoms Notion ont été convertis vers ceux de l'appli (Johann → John, Thomas A → Tom, Valerio → Valério). Thomas G apparaît comme « ancien membre ». Pour changer cette correspondance, modifiez `MEMBER_MAP` dans `build_import.py` et regénérez le fichier.
+
+Les photos de bouteilles qui étaient des liens vers des sites marchands sont affichées depuis ces sites. Si un lien ne marche plus, touchez « 📷 Ajouter une photo » sur la fiche.
+
+---
+
 # WLP 26 · Carnet de dégustation du club
 
 Application mobile (PWA) pour le Whisky Live Paris 2026 : les 216 stands du plan, les fiches de dégustation notées sur 100, les photos, le classement du club et un journal de souvenirs, partagés en temps réel entre les membres du club.
@@ -63,12 +104,13 @@ python3 -m http.server 8000   # puis http://localhost:8000
 ## Données & quotas
 - Les photos sont compressées sur le téléphone : une miniature d'environ 30 Ko dans la fiche, et la version complète (< 700 Ko) dans `photos/`, chargée seulement à l'ouverture de la fiche.
 - Estimation pour 5 personnes × 40 drams avec photos : environ 100 Mo. L'offre gratuite Spark prévoit 1 Go de stockage et 50 000 lectures par jour, donc la marge est large.
-- Collections : `members`, `drams`, `moments`, `photos`, `wishlists`. Chaque membre ne peut modifier ou supprimer que ses propres fiches.
+- Collections : `members`, `drams`, `moments`, `photos`, `wishlists` (WLP 26), et `bottles`, `ratings` (Cave). L'historique Notion pèse environ 7 Mo. Chaque membre ne peut modifier ou supprimer que ses propres fiches.
 
 ## Structure
 Tous les fichiers sont à plat, à la racine du dépôt (aucun dossier).
 ```
-index.html  style.css  app.js  store.js  stands.js
+index.html  style.css  app.js  store.js  stands.js     ← WLP 26
+cave.html   cave.css   cave.js                         ← La Cave
 config.js         ← Firebase + prénoms
 sw.js  manifest.webmanifest  icon-192.png  icon-512.png  plan-wlp26.webp
 firestore.rules   ← à coller dans Firebase (avec votre code club)
